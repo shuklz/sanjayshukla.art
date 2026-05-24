@@ -57,4 +57,39 @@ for src in "$SRC_DIR"/*.png "$SRC_DIR"/*.PNG; do
   done
 done
 
-printf '\ndone — %d built, %d skipped.\n' "$built" "$skipped"
+printf '\nimages — %d built, %d skipped.\n' "$built" "$skipped"
+
+# --- Step 2: encrypt gallery → index.html via Staticrypt ---
+
+if [[ ! -f .password ]]; then
+  echo
+  echo "error: .password file not found at project root."
+  echo "create it with the gallery password (gitignored, never committed):"
+  echo "  echo 'your-password' > .password"
+  exit 1
+fi
+
+if ! command -v npx >/dev/null; then
+  echo
+  echo "error: npx not found. Install Node (https://nodejs.org/) and retry."
+  exit 1
+fi
+
+echo
+echo "encrypting gallery..."
+cp _src/gallery.html _src/index.html
+STATICRYPT_PASSWORD="$(cat .password)" npx --yes staticrypt _src/index.html \
+  -d . --short \
+  --template-title "Digital Art by Sanjay Shukla" \
+  --template-color-primary "#f0c75c" \
+  --template-color-secondary "#0e0e10" \
+  --template-button "Enter" \
+  --template-placeholder "Password" >/dev/null
+rm _src/index.html
+
+echo "encrypted → index.html"
+echo
+echo "done. Commit and push:"
+echo "  git add images/ index.html"
+echo "  git commit -m 'Add painting: ...'"
+echo "  git push"
