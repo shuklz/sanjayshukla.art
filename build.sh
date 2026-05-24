@@ -86,6 +86,17 @@ if ! command -v npx >/dev/null; then
   exit 1
 fi
 
+# Skip re-encryption when nothing has changed — Staticrypt uses a fresh IV each
+# run, so unconditional re-encryption would produce a different index.html
+# every build and create noise commits.
+if [[ -f index.html && index.html -nt _src/gallery.html && index.html -nt .password ]]; then
+  echo
+  echo "encryption skipped — _src/gallery.html and .password unchanged."
+  echo
+  echo "done."
+  exit 0
+fi
+
 echo
 echo "encrypting gallery..."
 cp _src/gallery.html _src/index.html
