@@ -14,8 +14,10 @@ The site is **built, encrypted, and pushed**. Four FAITH paintings are on displa
 - GitHub Pages is serving the Staticrypt-encrypted gallery — verified via DNS-bypass curl. View-source on `index.html` reveals only encrypted blob.
 - Password gate works in **both Safari and Chrome**.
 - Lightbox: click any tile, prev/next/Esc/arrow keys/backdrop-click-to-close. Sticky header that stays anchored on scroll.
+- **Gold-framed mat** around every tile and the lightbox image: soft gold hairline on a `#1a1a1d` mat, brightens to full accent gold on hover.
+- **Zoom + pan in the lightbox**: `+`/`−`/reset toolbar at bottom-center, mouse-wheel zoom on the image, click-and-drag to pan when zoomed in, double-click to reset, keyboard `+`/`−`/`0` shortcuts. Zoom range 1×–3×. Standard JPG (2200px) loads instantly; hi-res JPG (up to 5120px) is preloaded in the background and swapped in on first zoom. Arrow-key prev/next is suppressed when zoom > 1 so inspection isn't interrupted.
 - Anti-copy: no right-click menu, no image drag, no text/image selection.
-- Pipeline: `./build.sh` does image conversion (PNG → JPG + AVIF at 2200px) AND Staticrypt encryption in one command, reading the password from `./.password` (gitignored).
+- Pipeline: `./build.sh` does image conversion (PNG → JPG + AVIF at 2200px + hi-res JPG capped at min(source, 5120px)) AND Staticrypt encryption in one command, reading the password from `./.password` (gitignored).
 
 ### Password (for future sessions)
 - `DigitalArtBySanjayShukla` — chosen by user 2026-05-24
@@ -23,10 +25,13 @@ The site is **built, encrypted, and pushed**. Four FAITH paintings are on displa
 - If `.password` file is missing on a new Mac/clone, just recreate it: `echo 'DigitalArtBySanjayShukla' > .password` then `./build.sh`
 
 ### What's pending — pick up here when user returns
-1. **Wait for DNS propagation**. Nameservers at name.com were switched today from Google's (`ns-cloud-a1-4.googledomains.com`) to name.com's defaults (`ns1.name.com` ... `ns4.name.com`), and 5 DNS records added: 4 × A apex → `185.199.108-111.153`, and CNAME `www` → `shuklz.github.io`. Propagation: 1–48 hr (typically a few hours). Check with `dig sanjayshukla.art A`. When it returns the four `185.199.x.153` IPs, the live URL works.
-2. **Toggle "Enforce HTTPS"** at https://github.com/shuklz/sanjayshukla.art/settings/pages. Greyed out until ~10 min after DNS resolves and Let's Encrypt cert issues automatically.
-3. **Apply "border option 2"** to spice up the tile presentation: a faux mat board (8–12px padding around each `<img>` in a slightly lighter tone than `--bg`, e.g. `#1a1a1d`) plus a deeper drop-shadow so each tile floats above the background. CSS lives in `styles.css` under `.tile`. The user explicitly chose this option after the gallery rendered.
-4. **Share URL + password with family/friends** once DNS resolves and HTTPS is enforced.
+1. **Wait for Let's Encrypt cert to issue.** DNS is already propagated (verified end of session — `dig sanjayshukla.art A` returns the four `185.199.x.153` IPs; Pages settings shows green "DNS check successful"). The TLS cert is still GitHub's default `*.github.io` though — Let's Encrypt typically issues within 10–60 min of DNS verification. Re-check by running:
+   ```bash
+   echo | openssl s_client -servername sanjayshukla.art -connect 185.199.108.153:443 2>/dev/null | openssl x509 -noout -subject -dates
+   ```
+   When `subject=` shows `/CN=sanjayshukla.art` instead of `/CN=*.github.io`, cert is issued.
+2. **Toggle "Enforce HTTPS"** at https://github.com/shuklz/sanjayshukla.art/settings/pages once the cert is issued (checkbox will become available — currently greyed out with "Unavailable for your site because a certificate has not yet been issued").
+3. **Share URL + password with family/friends** once HTTPS is enforced. Until then, Chrome can't load the site at all because `.art` is on the HSTS preload list (no http fallback). Safari is more lenient.
 
 ### Browser quirk discovered — DO NOT ACCIDENTALLY RE-ENABLE
 Chrome on this Mac **fails to render `sips`-generated AVIF files in `<img>` tags**: it loads them with HTTP 200 OK but renders 0×0 in the page (collapsing the tile buttons). Bizarrely, the lightbox can still show them via JS direct `src` setting on a single `<img>`. The `<picture>` element AVIF→JPG fallback did **not** save us — Chrome picked AVIF, AVIF failed at *render time* (not load time), and the browser did not fall back.
@@ -71,8 +76,9 @@ git push                                            # Pages rebuilds in ~30 sec
 
 - **Hosting**: GitHub Pages from `main`, exactly like the sister site. No separate CDN — Pages' built-in Fastly is plenty for 50 display-res images.
 - **Password gate**: **Staticrypt** (encrypts the actual gallery HTML payload). Specifically chosen over a JS-only password prompt because Staticrypt makes the page un-viewable in *view-source* without the password — which also keeps it out of search engine indexes. (User explicitly asked for the stronger of the two options.)
-- **Image policy**: display-only, served at ~2200px wide. `build.sh` produces **both** lossy AVIF (quality 65) and lossy JPEG (quality 80) for every painting, but the gallery HTML currently references **JPGs only** due to the Chrome AVIF render bug (see top-of-file). JPGs are ~0.6–1.7 MB each; 50 paintings ≈ 30–80 MB total committed — comfortable inside Pages' 1 GB soft limit and 100 GB/month bandwidth. AVIFs are committed too (extra ~15–35 MB) so that re-enabling them later is a 30-second HTML swap. (History: originally planned as WebP; switched to AVIF + JPG dual-output on 2026-05-24 because this Mac has neither Homebrew nor `cwebp`, and macOS's built-in `sips` writes both AVIF and JPG but not WebP.)
-- **Originals never leave the artist's Mac.** They are not committed to git; they live in a gitignored `originals/` folder (or wherever the user puts them — see "Folder layout"). Both the optimised AVIFs and JPGs go to the repo.
+- **Image policy**: each painting produces **three** committed outputs from one PNG source: (1) `<slug>.avif` at 2200px (AVIF quality 65, currently unreferenced in HTML due to Chrome render bug — kept for future revival), (2) `<slug>.jpg` at 2200px (JPEG quality 80, what the masonry grid and initial lightbox view actually display), and (3) `<slug>-hires.jpg` at min(source-max-dim, 5120px) (JPEG quality 82, preloaded by the lightbox and swapped in when the user zooms past 1×). JPGs are ~0.6–1.7 MB each at 2200px and ~2.5–7 MB each at hi-res. 50 paintings ≈ 200–300 MB total committed — comfortable inside Pages' 1 GB soft limit and 100 GB/month bandwidth. (History: originally planned as WebP; switched to AVIF + JPG dual-output on 2026-05-24 because this Mac has neither Homebrew nor `cwebp`, and macOS's built-in `sips` writes both AVIF and JPG but not WebP. Hi-res JPG variant added later that day to support the lightbox zoom feature.)
+- **Originals never leave the artist's Mac.** They are not committed to git; they live in a gitignored `originals/` folder. AVIFs, JPGs, and hi-res JPGs all go to the repo (in `images/`).
+- **Anti-copy is now weaker for the hi-res JPGs.** Since the lightbox can load `images/<slug>-hires.jpg` (up to 5120px on the long edge), anyone who guesses or sniffs the URL pattern can download that variant directly. Acceptable trade-off for the zoom feature; user explicitly approved 2026-05-24. The 2200px standard JPG is what's shown in the grid and at fit-screen, so a casual right-click-save (if right-click were allowed) would still get the smaller one.
 - **Anti-copy deterrents**: right-click context menu disabled, image dragging disabled, CSS `user-select: none`. Acknowledge to the user that none of these prevent screenshots — they're just polite gates. The display-resolution cap is what bounds losses.
 - **No CDN dilemma**: the only reason to add R2 / B2 / Cloudinary would be full-resolution downloads, and there are none. GitHub Pages handles everything.
 - **Vanilla HTML/CSS/JS, no framework.** Pattern matches 3sstudio.net. **One tiny exception**: Staticrypt is a Node tool that has to run locally to produce the encrypted HTML. That's a one-shell-command "build step" — see "Build pipeline" below. Don't introduce Webpack / Vite / Next / etc.
@@ -97,9 +103,10 @@ sanjayshukla.art/                    ← the git repo
 │   └── …                            ← ~50 files
 ├── _src/                            ← gitignored. Unencrypted gallery source — what you edit.
 │   └── gallery.html
-├── images/                          ← COMMITTED. Generated JPGs + AVIFs, ~2200px wide.
-│   ├── radha-krishna.jpg            ← what the gallery actually serves
-│   └── radha-krishna.avif           ← committed but unused (see Chrome AVIF quirk at top)
+├── images/                          ← COMMITTED. Three outputs per painting (see Image policy).
+│   ├── radha-krishna.jpg            ← 2200px; gallery + initial lightbox view
+│   ├── radha-krishna-hires.jpg      ← up to 5120px; preloaded for lightbox zoom
+│   └── radha-krishna.avif           ← 2200px AVIF, committed but unused in HTML (Chrome quirk, see top)
 ├── index.html                       ← COMMITTED. Staticrypt-encrypted gallery + lock screen.
 ├── styles.css                       ← COMMITTED.
 ├── CNAME                            ← COMMITTED. Contains exactly: sanjayshukla.art
@@ -116,7 +123,7 @@ sanjayshukla.art/                    ← the git repo
 
 One shell script does two things:
 
-1. **Optimise images** — for each file in `originals/`, produce both `images/<kebab-case>.avif` (sips, quality 65) and `images/<kebab-case>.jpg` (sips, quality 80) at ~2200px wide. Filename is auto-converted to kebab-case (`RadhaKrishna.png` → `radha-krishna.jpg`) via three sed expressions in the `kebab()` helper — see `build.sh`. Skip files where the output is newer than the source. If a watermark is ever enabled, composite during this step (sips can do basic composition; ImageMagick would need installing).
+1. **Optimise images** — for each file in `originals/`, produce three outputs in `images/`: `<kebab>.avif` (sips, quality 65, capped at 2200px), `<kebab>.jpg` (sips, quality 80, capped at 2200px), and `<kebab>-hires.jpg` (sips, quality 82, capped at `min(source-max-dim, 5120px)` — never upscales). Filename is auto-converted to kebab-case (`RadhaKrishna.png` → `radha-krishna.jpg`) via three sed expressions in the `kebab()` helper — see `build.sh`. Skip files where any output is newer than the source. If a watermark is ever enabled, composite during this step (sips can do basic composition; ImageMagick would need installing).
 2. **Encrypt the gallery HTML** — copies `_src/gallery.html` to `_src/index.html` (so the output is named `index.html`), then runs Staticrypt: `STATICRYPT_PASSWORD="$(cat .password)" npx --yes staticrypt _src/index.html -d . --short --template-title "Digital Art by Sanjay Shukla" --template-color-primary "#f0c75c" --template-color-secondary "#0e0e10" --template-button "Enter" --template-placeholder "Password"`. Then removes the temp `_src/index.html`. `--short` suppresses the "short password" warning. Reads password from `.password` (gitignored). Fails fast if `.password` or `npx` is missing.
 
 The user's full workflow:
@@ -173,7 +180,7 @@ All of these were completed during the 2026-05-24 afternoon session. Left here a
 - **No build step beyond `./build.sh`.** No Vite, no Webpack, no Next, no React, no Tailwind. Vanilla everything.
 - **Commit specific files, not `git add .`** — risk of leaking `originals/` or `.password` if `.gitignore` has a typo.
 - **Image filenames are kebab-case lowercase** in `images/` (`saraswati-veena.jpg`, not `Saraswati Veena.JPG`) — Pages URLs are case-sensitive even though macOS's filesystem isn't. Source files in `originals/` may be CamelCase; `build.sh` does the conversion.
-- **`images/` only contains JPG + AVIF pairs** generated by `build.sh`. Never hand-place files there.
+- **`images/` only contains JPG + AVIF + hi-res JPG triples** generated by `build.sh`. Never hand-place files there. Hi-res variants are named `<slug>-hires.jpg`; the lightbox derives the URL by simple replace, so don't break that pattern.
 - **Never commit `originals/` or `_src/`** — verify with `git status` before each push.
 - **Don't `git push --force`** — Pages serves whatever's on `main`, and the artist's only off-Mac backup of the *generated site* is what's on GitHub.
 

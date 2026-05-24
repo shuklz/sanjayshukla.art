@@ -139,6 +139,10 @@ img {
     background: var(--mat);
     padding: 12px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    transform-origin: center center;
+    will-change: transform;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .lightbox-caption {
@@ -196,4 +200,52 @@ img {
     .lightbox-prev,
     .lightbox-next { font-size: 2.5rem; }
     .lightbox-close { font-size: 2rem; top: 0.5rem; right: 0.75rem; }
+}
+
+/* Zoom toolbar (bottom-center) */
+.lightbox-zoom {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.35rem;
+    background: rgba(20, 20, 22, 0.7);
+    padding: 0.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 2;
+}
+
+.lightbox-zoom button {
+    position: static;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0;
+    border-radius: 50%;
+    color: var(--fg);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lightbox-zoom button:hover,
+.lightbox-zoom button:focus-visible {
+    background: rgba(240, 199, 92, 0.18);
+    color: var(--accent);
+    transform: none;
+    outline: none;
+}
+
+.lightbox-zoom-reset { font-size: 1.05rem; }
+
+@media (max-width: 560px) {
+    .lightbox-zoom { bottom: 0.75rem; }
+    .lightbox-zoom button { width: 2rem; height: 2rem; font-size: 1.2rem; }
 }
