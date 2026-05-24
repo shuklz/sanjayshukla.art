@@ -30,36 +30,48 @@ If you remember just this rule, you can't break much.
 
 ## Adding a new painting (the daily flow)
 
-### What YOU do
+You don't need Claude for this anymore. Three steps:
 
-1. **Export the painting from your iPad app** as PNG (and optionally PSD if you want an editable master).
-2. **Drop both files into** `/Users/sanjay/Sites/sanjayshukla.art/originals/`. Rename them to whatever you want — CamelCase is fine. Examples:
+1. **Export from iPad** as PNG (and optionally PSD as an editable master).
+2. **Drop the file(s) into** `/Users/sanjay/Sites/sanjayshukla.art/originals/`. Rename to whatever you want — CamelCase is best. Examples:
    - `Ganesh.png` + `Ganesh.psd`
    - `Saraswati.png` + `Saraswati.psd`
    - `Hanuman2.png` (a second Hanuman piece) + `Hanuman2.psd`
-3. **Open Claude Code** in the project folder and say something like:
+3. **Open Terminal in the project folder and run:**
 
-   > *"Added 2 new paintings — Ganesh and Saraswati. Please do the rest."*
+   ```bash
+   cd /Users/sanjay/Sites/sanjayshukla.art
+   ./publish.sh
+   ```
 
-   Or even shorter:
-   > *"New art in originals. Please publish."*
+That's it. Wait ~30 seconds, refresh `https://sanjayshukla.art/`, and the new paintings will be in the grid.
 
-That's it on your end.
+### What `./publish.sh` actually does (so you know what to expect)
 
-### What CLAUDE will do (so you can check)
+1. Scans `originals/` for any PNG whose slug isn't in the gallery yet, and **appends a tile for each new one** to the gallery source.
+2. Runs the image conversion (3 image variants per painting: 2200px JPG for the grid, hi-res JPG up to 5120px for zoom, AVIF backup). Skips files that are already converted.
+3. Re-encrypts `index.html`. (If nothing actually changed, it skips this step — so re-running `./publish.sh` with nothing new is a clean no-op.)
+4. Commits with a message like `Add painting: Ganesh` or `Add paintings: Ganesh, Saraswati` and `git push`s to GitHub.
 
-1. List `originals/` to see what's new.
-2. Run `./build.sh` — which:
-   - Resizes each PNG to make the 3 image variants in `images/` (a 2200px JPG for the gallery, a higher-resolution JPG up to 5120px for zoom, an AVIF backup)
-   - Encrypts the gallery HTML and writes the new `index.html`
-3. Edit `_src/gallery.html` to add a tile (and corresponding lightbox entry) for each new painting.
-4. Re-run `./build.sh` so the encrypted `index.html` includes the new tiles.
-5. `git commit` with a clear message and `git push`.
-6. Tell you "live in ~30 seconds at `https://sanjayshukla.art/`".
+### Captions
 
-You then refresh the URL. New paintings appear in the grid. Done.
+The painting's caption (what shows under the image in the lightbox) is **auto-derived from the filename**:
 
-> **TODO for next session**: Claude can extend `build.sh` to auto-generate the tile markup, so step 3 becomes automatic and you don't even need to ping Claude — just `./build.sh` + commit + push. Worth doing once you've added a few paintings the manual way and the pattern is clear.
+| Filename | Auto-caption |
+|---|---|
+| `RadhaKrishna.png` | Radha Krishna |
+| `LordShiva.png` | Lord Shiva |
+| `Hanuman2.png` | Hanuman 2 |
+| `Lordshiva.png` | Lordshiva *(no internal capital to split on — rename to `LordShiva.png` to fix)* |
+
+If you want a custom caption (longer phrase, em-dash, alternate spelling, etc.), create a one-line text file next to the painting with the same base name and a `.txt` extension:
+
+```
+originals/LordShiva2.png       ← the painting
+originals/LordShiva2.txt       ← contains: Lord Shiva — stained glass
+```
+
+The `.txt` file is read once when the tile is first created (on the next `./publish.sh` run). After that, the caption lives in `_src/gallery.html` and editing the `.txt` won't change it — at that point ask Claude to update the caption, or hand-edit `_src/gallery.html`.
 
 ---
 
@@ -78,15 +90,14 @@ Tell them: **type the password, hit Enter, then click any painting to view full-
 If you ever want to rotate it (e.g. shared with too many people, want a new one):
 
 1. Edit the file `.password` in the project folder (it's just a plain text file with one line — the password).
-2. Tell Claude: *"Changed the password. Please rebuild and push."*
-3. Claude runs `./build.sh` (which re-encrypts with the new password) and pushes.
-4. **Share the new password with whoever you want to still have access.** Old password no longer works the moment the push lands.
+2. Run `./publish.sh`. It detects the password change, re-encrypts `index.html`, commits, and pushes.
+3. **Share the new password with whoever you want to still have access.** Old password no longer works the moment the push lands.
 
 ### Edit a caption (the name shown under a painting in the lightbox)
 
 Tell Claude: *"Change the caption for `<filename>` to `<new caption>`."*
 
-Captions today are auto-derived from filenames (`RadhaKrishna.png` → "Radha Krishna"). Custom captions need a small edit to `_src/gallery.html` — Claude will do it.
+For brand-new paintings, dropping a `<basename>.txt` next to the PNG before running `./publish.sh` sets the caption (see the "Captions" section above). To change a caption *after* the tile has already been committed, Claude has to edit `_src/gallery.html` directly.
 
 ### Remove a painting
 
@@ -95,7 +106,9 @@ Tell Claude: *"Remove `<filename>` from the gallery."*
 Claude will:
 - Delete the relevant tile from `_src/gallery.html`
 - Delete the three files from `images/` (`.jpg`, `-hires.jpg`, `.avif`)
-- Re-build and push
+- Run `./publish.sh` to push
+
+(`./publish.sh` only handles *adding* paintings on its own; removals still need Claude.)
 
 You can also leave the source files in `originals/` (since `originals/` is gitignored, it doesn't affect the site) or delete them yourself — your choice.
 
@@ -122,7 +135,7 @@ Claude will probably suggest reorganizing the gallery into sections (or creating
 ## What NOT to do
 
 - **Don't manually edit anything in `images/`.** `build.sh` overwrites it. Your edits will vanish.
-- **Don't push to GitHub without running `./build.sh` first.** You'd push stale `index.html` and the new images wouldn't show.
+- **Don't push to GitHub by hand.** `./publish.sh` does the push for you and makes sure `index.html` and `images/` are up to date first. A manual `git push` could ship stale `index.html` (new images wouldn't show) or skip the encryption step entirely.
 - **Don't delete `.password`** unless you have it written down somewhere. Without it, `./build.sh` fails. (It's not committed to GitHub either, so it only exists on this Mac — and your memory.)
 - **Don't share the GitHub repo URL** publicly. It's a public repo so the encrypted gallery code is readable, but anyone with the URL can also see the file listing in `images/` and download paintings by guessing filenames. Share the **site URL** (`sanjayshukla.art`), not the GitHub one.
 - **Don't `git push --force`** or use any "force" git commands. Pages serves whatever's on `main`. Force-push could blow away work that's only on GitHub.
@@ -136,12 +149,14 @@ Claude will probably suggest reorganizing the gallery into sections (or creating
 
 Probably still works (`build.sh` converts to lowercase kebab-case), but to be safe, rename to plain Latin letters and (optional) numbers. Example: instead of `Lord Shiva (cosmic dance).png`, use `LordShivaCosmicDance.png` or `LordShiva3.png`. Tell Claude if you're unsure.
 
-### "I told Claude to publish but the new painting isn't showing on the live URL."
+### "I ran `./publish.sh` but the new painting isn't showing on the live URL."
 
-Common causes (Claude will check these too):
+Common causes:
 1. Browser cached the old version — **hard refresh** with `Cmd+Shift+R` on Mac.
 2. Pages hasn't finished rebuilding — wait 60 sec, refresh again.
 3. The painting file wasn't actually moved to `originals/` — check the folder.
+4. `./publish.sh` reported `nothing to push — already up to date.` — that means it found no new PNG in `originals/`. The file might not be a `.png` (it skips `.psd`, `.heic`, `.jpg` sources), or the slug it generated already exists in the gallery.
+5. `./publish.sh` errored out — read the last few lines of the output. If it mentions `.password` or `npx`, see the relevant entry below.
 
 ### "The site doesn't load at all — `sanjayshukla.art` is blank or shows an error."
 
@@ -161,10 +176,11 @@ It's in this file at the top, in CLAUDE.md, in `.password` on the Mac, and (hope
 sanjayshukla.art/
 ├── originals/          ← YOU. Drop iPad exports (PNG/PSD) here. Stays on Mac.
 ├── images/             ← BUILD OUTPUT. JPG + hi-res JPG + AVIF per painting. Don't touch.
-├── _src/gallery.html   ← The gallery's HTML source. Don't touch (Claude edits it).
+├── _src/gallery.html   ← The gallery's HTML source. publish.sh auto-appends tiles; otherwise Claude edits.
 ├── index.html          ← Encrypted gallery (password gate). Built by ./build.sh.
 ├── styles.css          ← Visual styling. Claude edits when you ask for visual changes.
-├── build.sh            ← The build script. You don't run it; Claude does.
+├── publish.sh          ← The one-button publish. THIS is what you run after dropping new images.
+├── build.sh            ← Image conversion + encryption. Called by publish.sh; you don't normally run directly.
 ├── CNAME               ← Tells GitHub Pages the custom domain is sanjayshukla.art.
 ├── robots.txt          ← Asks search engines not to index. Don't touch.
 ├── favicon.svg/.ico    ← The little tab icon. The gold "S".
@@ -179,7 +195,7 @@ sanjayshukla.art/
 
 ## Sanity check before you wrap each session
 
-After Claude says "pushed", you can verify with:
+After `./publish.sh` prints `✓ done. Site updates in ~30 sec...`, verify:
 
 1. Open `https://sanjayshukla.art/` in your browser (Safari if HTTPS still uncertain).
 2. Confirm you see the password prompt.
@@ -194,7 +210,8 @@ If all four pass, you're good.
 ## When to actually call for help vs handle it yourself
 
 **You can handle yourself:**
-- Adding/removing paintings
+- Adding paintings (`./publish.sh`)
+- Changing the password (edit `.password`, then `./publish.sh`)
 - Sharing the URL
 - Browser cache issues (hard refresh)
 
