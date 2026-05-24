@@ -1,0 +1,12 @@
+# Source masters — never leave the Mac
+originals/
+_src/
+
+# Local-only secrets
+.password
+
+# macOS noise
+.DS_Store
+
+# Claude Code session state
+.claude/
