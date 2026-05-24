@@ -17,12 +17,12 @@ The site is **built, encrypted, and pushed**. Four FAITH paintings are on displa
 - **Gold-framed mat** around every tile and the lightbox image: soft gold hairline on a `#1a1a1d` mat, brightens to full accent gold on hover.
 - **Zoom + pan in the lightbox**: `+`/`−`/reset toolbar at bottom-center, mouse-wheel zoom on the image, click-and-drag to pan when zoomed in, double-click to reset, keyboard `+`/`−`/`0` shortcuts. Zoom range 1×–3×. Standard JPG (2200px) loads instantly; hi-res JPG (up to 5120px) is preloaded in the background and swapped in on first zoom. Arrow-key prev/next is suppressed when zoom > 1 so inspection isn't interrupted.
 - Anti-copy: no right-click menu, no image drag, no text/image selection.
-- Pipeline: `./build.sh` does image conversion (PNG → JPG + AVIF at 2200px + hi-res JPG capped at min(source, 5120px)) AND Staticrypt encryption in one command, reading the password from `./.password` (gitignored).
+- Pipeline: `./publish.sh` is the one-button publish — auto-appends tiles for new originals to `_src/gallery.html`, runs `./build.sh` (image conversion: PNG → JPG + AVIF at 2200px + hi-res JPG capped at min(source, 5120px); plus Staticrypt encryption), then commits and pushes. `./build.sh` is still callable standalone for local-only rebuilds. Password is read from `./.password` (gitignored).
 
 ### Password (for future sessions)
 - `DigitalArtBySanjayShukla` — chosen by user 2026-05-24
 - Stored locally in `./.password` (gitignored, never committed)
-- If `.password` file is missing on a new Mac/clone, just recreate it: `echo 'DigitalArtBySanjayShukla' > .password` then `./build.sh`
+- If `.password` file is missing on a new Mac/clone, just recreate it: `echo 'DigitalArtBySanjayShukla' > .password` then `./publish.sh`
 
 ### What's pending — pick up here when user returns
 1. **Wait for Let's Encrypt cert to issue.** DNS is already propagated (verified end of session — `dig sanjayshukla.art A` returns the four `185.199.x.153` IPs; Pages settings shows green "DNS check successful"). The TLS cert is still GitHub's default `*.github.io` though — Let's Encrypt typically issues within 10–60 min of DNS verification. Re-check by running:
@@ -49,11 +49,9 @@ Chrome on this Mac **fails to render `sips`-generated AVIF files in `<img>` tags
 ### Day-to-day "add a painting" workflow (locked in)
 ```bash
 cp ~/iPad-export.png originals/MyNewPainting.png   # CamelCase is fine
-./build.sh                                          # converts images AND re-encrypts
-git add images/ index.html
-git commit -m "Add MyNewPainting"
-git push                                            # Pages rebuilds in ~30 sec
+./publish.sh                                        # one-button: tile + convert + encrypt + commit + push
 ```
+That's it. See "Build pipeline" below for what `publish.sh` does internally.
 
 ---
 
@@ -89,7 +87,7 @@ git push                                            # Pages rebuilds in ~30 sec
 2. **Tagline / one-line description** on the lock screen — something brief about the series? Or leave the gate visually quiet (just title + password field)?
 3. **Watermark** — yes / no / what mark? Options: a small low-opacity signature in a corner of each painting (baked in during the build pipeline using ImageMagick/sips), OR a single CSS-overlay watermark on the page (visible but trivially DOM-removable), OR none. User was leaning "decide later" — confirm before shipping.
 4. ~~Password model~~ — **RESOLVED 2026-05-24**: single shared password `DigitalArtBySanjayShukla`. If multi-password becomes useful later, Staticrypt's `-p` flag also accepts a JSON file with per-recipient passwords.
-5. ~~Captions / titles per painting~~ — **RESOLVED 2026-05-24**: user names source files manually (CamelCase like `RadhaKrishna.png` is fine); `build.sh` auto-converts to kebab-case slugs for committed AVIFs and URLs. Optional `<basename>.txt` next to a source image can carry a longer note. **Still open**: should captions show on hover, only in the lightbox, or not at all? (Default for first build: lightbox only.)
+5. ~~Captions / titles per painting~~ — **RESOLVED 2026-05-24**: source files are CamelCase (`RadhaKrishna.png`); `build.sh` kebab-cases to slugs. `publish.sh` derives the caption by splitting CamelCase + digit boundaries, OR reads the first line of `originals/<basename>.txt` if present. Caption shows in the lightbox only (not on hover). The `.txt` sidecar is consulted *once* — at tile-insertion time — not on every build, so post-insertion caption changes require hand-editing `_src/gallery.html`.
 6. **Lock-screen wallpaper** — Staticrypt themes are minimal. Want a faded painting behind the gate, or plain background?
 
 ## Folder layout (proposed — confirm with user)
@@ -99,9 +97,9 @@ sanjayshukla.art/                    ← the git repo
 ├── originals/                       ← gitignored. The user drops iPad exports here.
 │   ├── RadhaKrishna.png             ← CamelCase OK; build.sh kebab-cases for URLs
 │   ├── RadhaKrishna.psd             ← optional editable master (not consumed by build.sh)
-│   ├── RadhaKrishna.txt             ← optional. Multi-line note shown under the painting.
+│   ├── RadhaKrishna.txt             ← optional caption override. First line is used as the tile/lightbox caption.
 │   └── …                            ← ~50 files
-├── _src/                            ← gitignored. Unencrypted gallery source — what you edit.
+├── _src/                            ← gitignored. Unencrypted gallery source — what publish.sh appends tiles to.
 │   └── gallery.html
 ├── images/                          ← COMMITTED. Three outputs per painting (see Image policy).
 │   ├── radha-krishna.jpg            ← 2200px; gallery + initial lightbox view
@@ -110,36 +108,53 @@ sanjayshukla.art/                    ← the git repo
 ├── index.html                       ← COMMITTED. Staticrypt-encrypted gallery + lock screen.
 ├── styles.css                       ← COMMITTED.
 ├── CNAME                            ← COMMITTED. Contains exactly: sanjayshukla.art
-├── build.sh                         ← COMMITTED. One-command pipeline (resize + encrypt).
+├── publish.sh                       ← COMMITTED. One-button publish: tile + build + commit + push. What the user runs.
+├── build.sh                         ← COMMITTED. Image conversion + encryption. Called by publish.sh; also runnable standalone.
 ├── .gitignore                       ← COMMITTED.
 ├── .staticrypt.json                 ← COMMITTED. Just the salt (not secret). Keeps the encryption stable across rebuilds.
 ├── .password                        ← GITIGNORED. Plaintext gallery password, used by build.sh.
+├── UPDATE.md                        ← COMMITTED. User-facing manual (written for Sanjay, not Claude).
 └── CLAUDE.md                        ← this file
 ```
 
-**Don't deviate from this layout without good reason** — the `build.sh` script and `.gitignore` are calibrated to it.
+**Don't deviate from this layout without good reason** — `publish.sh`, `build.sh`, and `.gitignore` are calibrated to it.
 
-## Build pipeline (`build.sh`)
+## Build pipeline (`publish.sh` → `build.sh`)
 
-One shell script does two things:
+Two shell scripts. `publish.sh` is what the user runs; it delegates the heavy lifting to `build.sh`.
 
-1. **Optimise images** — for each file in `originals/`, produce three outputs in `images/`: `<kebab>.avif` (sips, quality 65, capped at 2200px), `<kebab>.jpg` (sips, quality 80, capped at 2200px), and `<kebab>-hires.jpg` (sips, quality 82, capped at `min(source-max-dim, 5120px)` — never upscales). Filename is auto-converted to kebab-case (`RadhaKrishna.png` → `radha-krishna.jpg`) via three sed expressions in the `kebab()` helper — see `build.sh`. Skip files where any output is newer than the source. If a watermark is ever enabled, composite during this step (sips can do basic composition; ImageMagick would need installing).
-2. **Encrypt the gallery HTML** — copies `_src/gallery.html` to `_src/index.html` (so the output is named `index.html`), then runs Staticrypt: `STATICRYPT_PASSWORD="$(cat .password)" npx --yes staticrypt _src/index.html -d . --short --template-title "Digital Art by Sanjay Shukla" --template-color-primary "#f0c75c" --template-color-secondary "#0e0e10" --template-button "Enter" --template-placeholder "Password"`. Then removes the temp `_src/index.html`. `--short` suppresses the "short password" warning. Reads password from `.password` (gitignored). Fails fast if `.password` or `npx` is missing.
+### `publish.sh` — the one-button publish
 
-The user's full workflow:
+1. **Detect new paintings** — for each `originals/*.png`, computes the kebab slug and greps `_src/gallery.html` for it. Any slug not present is "new".
+2. **Append tiles** — for each new painting, inserts a `<button class="tile">…</button>` block just before `    </main>` in `_src/gallery.html`. Insertion uses a `head N | insert | tail N+1` split (not awk — BSD awk on macOS rejects literal newlines in `-v` values; learned the hard way 2026-05-24).
+3. **Caption resolution per new painting**:
+   - If `originals/<basename>.txt` exists → first line is the caption.
+   - Else → `caption_from()` splits CamelCase + digit boundaries (`LordShiva.png` → "Lord Shiva", `Hanuman2.png` → "Hanuman 2"). Filenames with no internal capital (e.g. `Ganeshji.png`) yield "Ganeshji" — user must rename or use a `.txt` sidecar to fix.
+   - Captions are written into the tile's `alt`, `aria-label`, and (via JS) the lightbox caption. After tile insertion, the caption lives in `_src/gallery.html`; editing the `.txt` later won't update it (the script only consults `.txt` on *first* insertion).
+4. **Calls `./build.sh`** (see below).
+5. **Stages, commits, pushes** — `git add images/ index.html publish.sh && git add -u` (the `-u` picks up edits to other tracked files like `styles.css` or `UPDATE.md`). Commit message is `Add painting: X` (single new) / `Add paintings: X, Y` (multiple) / `Update site` (no new paintings, just other tracked-file edits). Detects "nothing to commit" via `git diff --cached --quiet`. Always tries to push any unpushed commits at the end (covers the case where a previous run committed but failed to push).
+
+### `build.sh` — image conversion + encryption
+
+1. **Optimise images** — for each file in `originals/`, produce three outputs in `images/`: `<kebab>.avif` (sips, quality 65, capped at 2200px), `<kebab>.jpg` (sips, quality 80, capped at 2200px), and `<kebab>-hires.jpg` (sips, quality 82, capped at `min(source-max-dim, 5120px)` — never upscales). Filename is auto-converted to kebab-case (`RadhaKrishna.png` → `radha-krishna.jpg`) via three sed expressions in the `kebab()` helper. Skip files where any output is newer than the source. If a watermark is ever enabled, composite during this step (sips can do basic composition; ImageMagick would need installing).
+2. **Encrypt the gallery HTML** — copies `_src/gallery.html` to `_src/index.html`, then runs Staticrypt: `STATICRYPT_PASSWORD="$(cat .password)" npx --yes staticrypt _src/index.html -d . --short --template-title "Digital Art by Sanjay Shukla" --template-color-primary "#f0c75c" --template-color-secondary "#0e0e10" --template-button "Enter" --template-placeholder "Password"`. Then removes the temp `_src/index.html`. `--short` suppresses the "short password" warning. Reads password from `.password` (gitignored). Fails fast if `.password` or `npx` is missing.
+3. **Conditional re-encryption** — Staticrypt uses a fresh IV per run, so re-encrypting unchanged content still produces a different `index.html` (= noise commits). `build.sh` skips step 2 entirely when `index.html` is newer than both `_src/gallery.html` AND `.password`. Don't remove this guard — without it, every `./publish.sh` run pushes a meaningless 1-line diff. (See commits e96f856…7f78913 from 2026-05-24 evening for examples of this noise — left in history because rewriting pushed commits needs force-push, which the user has prohibited.)
+
+### The user's full workflow
 
 ```bash
-# Add new painting:
-cp ~/iPad-export.png originals/NewPainting.png   # CamelCase OK
-./build.sh                                        # converts AND re-encrypts
-git add images/ index.html
-git commit -m "Add NewPainting"
-git push                                          # Pages rebuilds in ~30 sec
+cp ~/iPad-export.png originals/NewPainting.png   # CamelCase recommended; .psd optional alongside
+# (optional) echo 'Custom Caption' > originals/NewPainting.txt
+./publish.sh                                      # Pages rebuilds in ~30 sec
 ```
 
-Local identity is set per-repo (`git config user.email shuklz@gmail.com` and `git config user.name "Sanjay Shukla"`) — done once when the repo was initialised, no need to re-add `-c` flags per commit. Macros the sister site's setup.
+Local git identity is set per-repo (`git config user.email shuklz@gmail.com`, `git config user.name "Sanjay Shukla"`) — done once at init, no need to re-add `-c` flags per commit.
 
-Pages rebuilds in ~30 seconds; live within a minute.
+### Things `publish.sh` does NOT do (still need Claude)
+
+- **Remove a painting** — no automation. Claude must edit `_src/gallery.html` to drop the tile, `rm images/<slug>.{jpg,avif}` and `rm images/<slug>-hires.jpg`, then `./publish.sh` to push.
+- **Re-order tiles** — `publish.sh` always appends new tiles at the end of `<main class="gallery">`. To reorder, hand-edit `_src/gallery.html`.
+- **Change a caption after first insertion** — once a tile is in `_src/gallery.html`, the `.txt` sidecar is no longer consulted. Edit `_src/gallery.html` directly (the tile's `aria-label` and the img's `alt` must both be updated to keep them in sync).
 
 ## Staticrypt — what to know
 
@@ -174,15 +189,16 @@ All of these were completed during the 2026-05-24 afternoon session. Left here a
 6. ✅ `build.sh` written, then extended to also run Staticrypt.
 7. ✅ First build verified locally (`python3 -m http.server 8765`); pushed; Pages serves the encrypted gallery (DNS-bypass curl confirmed).
 8. ✅ "Add a painting" workflow documented at the top of this file.
+9. ✅ `publish.sh` written (2026-05-24 evening): wraps build.sh with auto-tile-insertion + commit + push. End-to-end tested with Ganeshji.png + Hanumanji.png. UPDATE.md rewritten to point at `./publish.sh` as the daily flow (no need to ping Claude for additions).
 
 ## Conventions
 
-- **No build step beyond `./build.sh`.** No Vite, no Webpack, no Next, no React, no Tailwind. Vanilla everything.
-- **Commit specific files, not `git add .`** — risk of leaking `originals/` or `.password` if `.gitignore` has a typo.
+- **No build step beyond `./publish.sh`.** No Vite, no Webpack, no Next, no React, no Tailwind. Vanilla everything.
+- **`publish.sh` uses `git add` on a known file list + `git add -u`** — never `git add .`. Keeps `originals/`, `_src/`, `.password` from leaking even if `.gitignore` has a typo.
 - **Image filenames are kebab-case lowercase** in `images/` (`saraswati-veena.jpg`, not `Saraswati Veena.JPG`) — Pages URLs are case-sensitive even though macOS's filesystem isn't. Source files in `originals/` may be CamelCase; `build.sh` does the conversion.
 - **`images/` only contains JPG + AVIF + hi-res JPG triples** generated by `build.sh`. Never hand-place files there. Hi-res variants are named `<slug>-hires.jpg`; the lightbox derives the URL by simple replace, so don't break that pattern.
-- **Never commit `originals/` or `_src/`** — verify with `git status` before each push.
-- **Don't `git push --force`** — Pages serves whatever's on `main`, and the artist's only off-Mac backup of the *generated site* is what's on GitHub.
+- **Never commit `originals/` or `_src/`** — both are in `.gitignore`. `publish.sh` is careful but verify with `git status` if anything looks off.
+- **Don't `git push --force`** — Pages serves whatever's on `main`, and the artist's only off-Mac backup of the *generated site* is what's on GitHub. (This explicitly applies to cleaning up the 3 `Update site` noise commits from 2026-05-24 evening — leave them alone.)
 
 ## Carryover patterns from 3sstudio.net
 
