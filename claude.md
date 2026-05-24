@@ -25,13 +25,29 @@ The site is **built, encrypted, and pushed**. Four FAITH paintings are on displa
 - If `.password` file is missing on a new Mac/clone, just recreate it: `echo 'DigitalArtBySanjayShukla' > .password` then `./publish.sh`
 
 ### What's pending — pick up here when user returns
-1. **Wait for Let's Encrypt cert to issue.** DNS is already propagated (verified end of session — `dig sanjayshukla.art A` returns the four `185.199.x.153` IPs; Pages settings shows green "DNS check successful"). The TLS cert is still GitHub's default `*.github.io` though — Let's Encrypt typically issues within 10–60 min of DNS verification. Re-check by running:
+1. ✅ **Let's Encrypt cert issued (2026-05-25).** Subject is `/CN=sanjayshukla.art`, valid through Aug 22, 2026. Was blocked for ~24 hours by an orphaned DS record at the `.art` registry left over from when Google Domains was authoritative — see "DNSSEC trap" section below for the full story and the fix. Verify the cert anytime with:
    ```bash
    echo | openssl s_client -servername sanjayshukla.art -connect 185.199.108.153:443 2>/dev/null | openssl x509 -noout -subject -dates
    ```
-   When `subject=` shows `/CN=sanjayshukla.art` instead of `/CN=*.github.io`, cert is issued.
-2. **Toggle "Enforce HTTPS"** at https://github.com/shuklz/sanjayshukla.art/settings/pages once the cert is issued (checkbox will become available — currently greyed out with "Unavailable for your site because a certificate has not yet been issued").
-3. **Share URL + password with family/friends** once HTTPS is enforced. Until then, Chrome can't load the site at all because `.art` is on the HSTS preload list (no http fallback). Safari is more lenient.
+2. ✅ **"Enforce HTTPS" toggled (2026-05-25).** Done at https://github.com/shuklz/sanjayshukla.art/settings/pages once the cert went active.
+3. **Share URL + password with family/friends** — now safe to do (HTTPS enforced, cert globally propagating; allow ~30–60 min from issuance for all edge POPs to pick it up).
+
+### The DNSSEC trap (2026-05-25 incident, recorded for future-you)
+
+On 2026-05-24 the cert wouldn't issue. After 24 hours of "DNS check successful" but no cert, the diagnosis was that Google Domains (the previous DNS host before switching to name.com on 2026-05-24) had DNSSEC enabled by default and had pushed a DS record up to the `.art` registry. Switching nameservers to name.com — whose default DNS does NOT support DNSSEC self-signing — left the DS record orphaned at the registry. Validating resolvers (including Let's Encrypt's) returned SERVFAIL for `sanjayshukla.art`, so ACME validation never reached the HTTP-01 challenge step. The Pages settings page showed no error; the queue just silently kept retrying.
+
+**Symptom (use this to recognize it in the future or on any other domain):**
+```bash
+dig @8.8.8.8 sanjayshukla.art A 2>&1 | grep status:
+```
+- `SERVFAIL` → DNSSEC chain is broken. Cert will never issue.
+- `NOERROR` → DNS is healthy; cert issues normally.
+
+The casual `dig sanjayshukla.art A` from a laptop will still return correct A records even when validation is broken, because most consumer resolvers don't enforce DNSSEC. So the site appears to work in browsers, but is invisible to Let's Encrypt. This is *the* misleading thing.
+
+**Fix:** name.com → Manage Nameservers → bottom of page, "DNSSEC Management page" link → Remove all DS records at the registry. Propagation through the `.art` TLD takes ~30–60 min; after `dig @8.8.8.8` returns NOERROR, re-toggling the custom domain in Pages settings forces an immediate Let's Encrypt retry and the cert issues within 5–15 min.
+
+Same lesson is also saved as a cross-project memory in 3sstudio.net's `.claude` memory dir under `dnssec-orphan-after-ns-switch.md`, in case it ever bites the sister site or a future domain.
 
 ### Browser quirk discovered — DO NOT ACCIDENTALLY RE-ENABLE
 Chrome on this Mac **fails to render `sips`-generated AVIF files in `<img>` tags**: it loads them with HTTP 200 OK but renders 0×0 in the page (collapsing the tile buttons). Bizarrely, the lightbox can still show them via JS direct `src` setting on a single `<img>`. The `<picture>` element AVIF→JPG fallback did **not** save us — Chrome picked AVIF, AVIF failed at *render time* (not load time), and the browser did not fall back.
