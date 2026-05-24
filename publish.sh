@@ -73,10 +73,18 @@ if [[ ${#new_entries[@]} -gt 0 ]]; then
     insert+="            <img src=\"/images/${slug}.jpg\" alt=\"${caption}\" draggable=\"false\" loading=\"lazy\">"$'\n'
     insert+="        </button>"$'\n'
   done
-  awk -v insert="$insert" '
-    /^    <\/main>/ { printf "%s", insert; print; next }
-    { print }
-  ' _src/gallery.html > _src/gallery.html.tmp
+  # Splice the insert in just before `    </main>`. Using head/tail rather than
+  # awk because BSD awk on macOS rejects literal newlines in -v values.
+  linenum=$(grep -n '^    </main>$' _src/gallery.html | head -1 | cut -d: -f1)
+  if [[ -z "$linenum" ]]; then
+    echo "error: couldn't find '    </main>' marker in _src/gallery.html" >&2
+    exit 1
+  fi
+  {
+    head -n $((linenum - 1)) _src/gallery.html
+    printf '%s' "$insert"
+    tail -n +"$linenum" _src/gallery.html
+  } > _src/gallery.html.tmp
   mv _src/gallery.html.tmp _src/gallery.html
   echo "tiles appended to _src/gallery.html."
 else
