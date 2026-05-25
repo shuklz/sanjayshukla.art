@@ -103,6 +103,31 @@ img {
     height: auto;
 }
 
+.site-footer {
+    text-align: center;
+    padding: 1rem 1.5rem 2.5rem;
+    color: var(--fg-dim);
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+}
+
+.site-footer .contact-label {
+    margin-right: 0.6rem;
+}
+
+.site-footer .contact-email {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(240, 199, 92, 0.35);
+    transition: border-color 0.2s ease;
+}
+
+.site-footer .contact-email:hover,
+.site-footer .contact-email:focus-visible {
+    border-bottom-color: var(--accent);
+    outline: none;
+}
+
 /* Lightbox */
 .lightbox {
     position: fixed;
