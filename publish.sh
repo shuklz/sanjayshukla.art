@@ -53,7 +53,7 @@ for src in originals/*.png originals/*.PNG; do
   base=$(basename "$src")
   base="${base%.*}"
   slug=$(kebab "$base")
-  if ! grep -q "src=\"/images/${slug}\.jpg\"" _src/gallery.html; then
+  if ! grep -q "slug: \"${slug}\"" _src/gallery.html; then
     if [[ -f "originals/$base.txt" ]]; then
       caption=$(head -n 1 "originals/$base.txt" | tr -d '\r')
     else
@@ -69,15 +69,14 @@ if [[ ${#new_entries[@]} -gt 0 ]]; then
   for entry in "${new_entries[@]}"; do
     IFS='|' read -r slug caption base <<< "$entry"
     printf '  + %s → "%s"\n' "$base" "$caption"
-    insert+="        <button class=\"tile\" type=\"button\" aria-label=\"Open painting: ${caption}\">"$'\n'
-    insert+="            <img src=\"/images/${slug}.jpg\" alt=\"${caption}\" draggable=\"false\" loading=\"lazy\">"$'\n'
-    insert+="        </button>"$'\n'
+    insert+="  { slug: \"${slug}\", title: \"${caption}\" },"$'\n'
   done
-  # Splice the insert in just before `    </main>`. Using head/tail rather than
-  # awk because BSD awk on macOS rejects literal newlines in -v values.
-  linenum=$(grep -n '^    </main>$' _src/gallery.html | head -1 | cut -d: -f1)
+  # Splice the new entries into the PAINTINGS array, just before the
+  # `// __PAINTINGS_END__` marker. head/tail rather than awk because BSD awk on
+  # macOS rejects literal newlines in -v values.
+  linenum=$(grep -n '__PAINTINGS_END__' _src/gallery.html | head -1 | cut -d: -f1)
   if [[ -z "$linenum" ]]; then
-    echo "error: couldn't find '    </main>' marker in _src/gallery.html" >&2
+    echo "error: couldn't find '__PAINTINGS_END__' marker in _src/gallery.html" >&2
     exit 1
   fi
   {
@@ -86,7 +85,7 @@ if [[ ${#new_entries[@]} -gt 0 ]]; then
     tail -n +"$linenum" _src/gallery.html
   } > _src/gallery.html.tmp
   mv _src/gallery.html.tmp _src/gallery.html
-  echo "tiles appended to _src/gallery.html."
+  echo "entries appended to PAINTINGS array in _src/gallery.html."
 else
   echo "no new paintings to add."
 fi

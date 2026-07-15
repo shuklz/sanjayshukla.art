@@ -8,9 +8,11 @@ SRC_DIR="originals"
 OUT_DIR="images"
 MAX_DIM=2200
 HIRES_MAX_DIM=5120
+THUMB_MAX_DIM=440
 AVIF_QUALITY=65
 JPG_QUALITY=80
 HIRES_JPG_QUALITY=82
+THUMB_JPG_QUALITY=72
 
 mkdir -p "$OUT_DIR"
 
@@ -39,12 +41,13 @@ for src in "$SRC_DIR"/*.png "$SRC_DIR"/*.PNG; do
   avif="$OUT_DIR/$slug.avif"
   jpg="$OUT_DIR/$slug.jpg"
   hires="$OUT_DIR/$slug-hires.jpg"
+  thumb="$OUT_DIR/$slug-thumb.jpg"
 
   # Hi-res target = min(source's longer edge, HIRES_MAX_DIM); never upscale.
   src_max=$(sips -g pixelHeight -g pixelWidth "$src" | awk '/pixel/ {print $2}' | sort -rn | head -1)
   hires_target=$(( src_max < HIRES_MAX_DIM ? src_max : HIRES_MAX_DIM ))
 
-  for out in "$avif" "$jpg" "$hires"; do
+  for out in "$avif" "$jpg" "$hires" "$thumb"; do
     if [[ -f "$out" && "$out" -nt "$src" ]]; then
       printf 'skip   %s\n' "$out"
       skipped=$((skipped + 1))
@@ -58,6 +61,10 @@ for src in "$SRC_DIR"/*.png "$SRC_DIR"/*.PNG; do
     elif [[ "$out" == *-hires.jpg ]]; then
       printf 'build  %s → %s  (%spx)\n' "$src" "$out" "$hires_target"
       sips -Z "$hires_target" -s format jpeg -s formatOptions "$HIRES_JPG_QUALITY" \
+           "$src" --out "$out" >/dev/null
+    elif [[ "$out" == *-thumb.jpg ]]; then
+      printf 'build  %s → %s  (ring thumbnail)\n' "$src" "$out"
+      sips -Z "$THUMB_MAX_DIM" -s format jpeg -s formatOptions "$THUMB_JPG_QUALITY" \
            "$src" --out "$out" >/dev/null
     else
       printf 'build  %s → %s\n' "$src" "$out"
