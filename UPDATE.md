@@ -16,13 +16,42 @@ This is your reference for adding paintings, sharing the URL, changing the passw
 
 ---
 
+## 🖥️💻 Working across your two Macs (read once)
+
+You use two machines with this project:
+
+- **Mac Studio** — the desktop you were just working on. It does **not** have an `originals/` folder, so you don't add paintings here. It's just a synced copy.
+- **Your art-editing Mac** (the one **with** the `originals/` folder — where you drop iPad PNGs and run `./publish.sh`).
+
+They stay in sync through GitHub. Normally: run `./publish.sh` on the art Mac, then on the other Mac just `git pull` to catch up. **Whichever Mac you sit down at, `git pull` first** so you start from the latest.
+
+### ⚠️ ONE-TIME step on your art-editing Mac (do this next time you're on it)
+
+The gallery was upgraded on **2026-07-15** (the new spinning "ring" view). During that upgrade, the way the gallery source file is shared between Macs changed. Because of that, the **first** `git pull` on your art-editing Mac will fail with a message about an *"untracked working tree file `_src/gallery.html` would be overwritten."* That's expected. Fix it once, and it never happens again:
+
+```bash
+cd ~/Sites/sanjayshukla.art        # wherever the project lives on that Mac
+rm _src/gallery.html               # delete the OLD copy (the new one is safely in GitHub)
+git pull                           # pulls the new ring gallery + updated scripts
+```
+
+If `.password` is missing there afterward, recreate it once:
+
+```bash
+echo 'DigitalArtBySanjayShukla' > .password
+```
+
+After that one time, your normal flow (`./publish.sh` on the art Mac, `git pull` on the other) just works. If you ever get stuck on a git message you don't recognise, take a screenshot and ask Claude.
+
+---
+
 ## The single most important rule
 
 **You only ever touch two folders: `originals/` and (rarely) the project root.**
 
 - `originals/` — drop your iPad exports here (PNG and/or PSD). Stays on your Mac. Never goes to GitHub.
 - `images/` — **never touch by hand.** This is build output. Claude/`build.sh` writes here.
-- `_src/` — also never touch. Source for the gallery HTML. Stays on your Mac.
+- `_src/gallery.html` — the gallery's HTML source. `publish.sh` updates it for you; otherwise leave it to Claude. (As of 2026-07-15 it **does** sync to GitHub so both Macs share it — that's intentional.)
 
 If you remember just this rule, you can't break much.
 
@@ -49,7 +78,7 @@ That's it. Wait ~30 seconds, refresh `https://sanjayshukla.art/`, and the new pa
 ### What `./publish.sh` actually does (so you know what to expect)
 
 1. Scans `originals/` for any PNG whose slug isn't in the gallery yet, and **appends a tile for each new one** to the gallery source.
-2. Runs the image conversion (3 image variants per painting: 2200px JPG for the grid, hi-res JPG up to 5120px for zoom, AVIF backup). Skips files that are already converted.
+2. Runs the image conversion (4 image variants per painting: 2200px JPG for the grid, hi-res JPG up to 5120px for zoom, a small 440px thumbnail for the desktop "spin" ring, and an AVIF backup). Skips files that are already converted.
 3. Re-encrypts `index.html`. (If nothing actually changed, it skips this step — so re-running `./publish.sh` with nothing new is a clean no-op.)
 4. Commits with a message like `Add painting: Ganesh` or `Add paintings: Ganesh, Saraswati` and `git push`s to GitHub.
 
@@ -83,7 +112,7 @@ Send them this, exactly:
 
 > *"Here's a little gallery of my art: https://sanjayshukla.art/  Password: `DigitalArtBySanjayShukla`"*
 
-Tell them: **type the password, hit Enter, then click any painting to view full-screen. Use ← → arrows or the on-screen arrows to walk through; click the +/− buttons or use mouse wheel to zoom in; drag to pan when zoomed; click outside or hit Esc to close.**
+Tell them: **type the password and hit Enter.** On a **computer** they'll land on the 3D "spin" view — drag to spin the ring of paintings (or use the ‹ › arrows), and click the big centered one to view it full-screen. On a **phone** they'll see a simple grid — tap any painting. Either way there's a **SPIN / GRID** toggle under the title to switch. In full-screen: **← → arrows** (or on-screen arrows) walk through; **+/− buttons or mouse wheel** zoom; **drag to pan** when zoomed; **click outside or Esc** to close.
 
 ### Change the password
 
@@ -105,7 +134,7 @@ Tell Claude: *"Remove `<filename>` from the gallery."*
 
 Claude will:
 - Delete the relevant tile from `_src/gallery.html`
-- Delete the three files from `images/` (`.jpg`, `-hires.jpg`, `.avif`)
+- Delete the four files from `images/` (`.jpg`, `-hires.jpg`, `-thumb.jpg`, `.avif`)
 - Run `./publish.sh` to push
 
 (`./publish.sh` only handles *adding* paintings on its own; removals still need Claude.)
