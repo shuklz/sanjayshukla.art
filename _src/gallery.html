@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Digital Art by Sanjay Shukla</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="stylesheet" href="styles.css?v=ring1">
+</head>
+<body>
+<header class="site-header">
+    <h1>Digital Art by Sanjay Shukla</h1>
+    <div class="view-toggle" role="group" aria-label="Choose view">
+        <button id="view-spin" type="button" aria-pressed="false">SPIN</button>
+        <button id="view-grid" type="button" aria-pressed="false">GRID</button>
+    </div>
+</header>
+
+<!-- Desktop: 3D ring showcase (built by JS on wide screens only) -->
+<section class="ring-showcase" id="ring-showcase" aria-label="Painting showcase" hidden>
+    <div class="ring-stage">
+        <div class="ring" id="ring"></div>
+    </div>
+    <div class="ring-hero">
+        <button class="ring-hero-btn" id="ring-hero-btn" type="button" aria-label="Enlarge painting">
+            <img class="ring-hero-img" id="ring-hero-img" src="" alt="">
+        </button>
+        <h2 class="ring-hero-title" id="ring-hero-title"></h2>
+        <p class="ring-hero-series">FAITH</p>
+        <p class="ring-hero-cta">CLICK TO ENLARGE +</p>
+    </div>
+    <button class="ring-nav ring-prev" id="ring-prev" type="button" aria-label="Previous">&#8249;</button>
+    <button class="ring-nav ring-next" id="ring-next" type="button" aria-label="Next">&#8250;</button>
+    <p class="ring-hint">DRAG TO SPIN</p>
+</section>
+
+<!-- Mobile: masonry grid (built by JS on narrow screens only) -->
+<main class="gallery" id="grid"></main>
+
+<footer class="site-footer">
+    <span class="contact-label">Contact</span>
+    <a class="contact-email" href="mailto:shuklz@gmail.com">shuklz@gmail.com</a>
+</footer>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" id="lb-close" type="button" aria-label="Close">&times;</button>
+    <button class="lightbox-prev" id="lb-prev" type="button" aria-label="Previous">&#8249;</button>
+    <button class="lightbox-next" id="lb-next" type="button" aria-label="Next">&#8250;</button>
+    <figure class="lightbox-figure">
+        <img class="lightbox-img" id="lb-img" src="" alt="" draggable="false">
+        <figcaption class="lightbox-caption" id="lb-caption"></figcaption>
+    </figure>
+    <div class="lightbox-zoom">
+        <button class="lightbox-zoom-out" id="lb-zoom-out" type="button" aria-label="Zoom out">&minus;</button>
+        <button class="lightbox-zoom-reset" id="lb-zoom-reset" type="button" aria-label="Reset zoom">Reset</button>
+        <button class="lightbox-zoom-in" id="lb-zoom-in" type="button" aria-label="Zoom in">+</button>
+    </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   PAINTINGS — single source of truth. publish.sh appends new entries
+   just above the __PAINTINGS_END__ marker. Do not remove the marker.
+   ------------------------------------------------------------------ */
+const PAINTINGS = [
+  { slug: "bajarang-bali-2", title: "Bajarang Bali 2" },
+  { slug: "chaitanya-mahaprabhu", title: "Chaitanya Mahaprabhu" },
+  { slug: "dalai-lama", title: "Dalai Lama" },
+  { slug: "dewi-1", title: "Dewi 1" },
+  { slug: "dewi-2", title: "Dewi 2" },
+  { slug: "dewi-3", title: "Dewi 3" },
+  { slug: "erling-haaland", title: "Erling Haaland" },
+  { slug: "ganesha-2", title: "Ganesha 2" },
+  { slug: "ganeshji", title: "Ganeshji" },
+  { slug: "garuda", title: "Garuda" },
+  { slug: "gautam-buddha-2", title: "Gautam Buddha 2" },
+  { slug: "gautam-buddha-3", title: "Gautam Buddha 3" },
+  { slug: "gautam-buddha-4", title: "Gautam Buddha 4" },
+  { slug: "gautam-buddha", title: "Gautam Buddha" },
+  { slug: "god-of-wealth", title: "God Of Wealth" },
+  { slug: "hanumanji-2", title: "Hanumanji 2" },
+  { slug: "hanumanji", title: "Hanumanji" },
+  { slug: "jai-sree-ram", title: "Jai Sree Ram" },
+  { slug: "jesus-christ", title: "Jesus Christ" },
+  { slug: "krishna-and-arjuna", title: "Krishna And Arjuna" },
+  { slug: "lord-ganesh", title: "Lord Ganesh" },
+  { slug: "lord-krishna-2", title: "Lord Krishna 2" },
+  { slug: "lord-krishna-3", title: "Lord Krishna 3" },
+  { slug: "lord-krishna-4", title: "Lord Krishna 4" },
+  { slug: "lord-krishna", title: "Lord Krishna" },
+  { slug: "lord-shani", title: "Lord Shani" },
+  { slug: "lord-shiva-2", title: "Lord Shiva 2" },
+  { slug: "lord-shiva-3", title: "Lord Shiva 3" },
+  { slug: "lord-shiva", title: "Lord Shiva" },
+  { slug: "lord-vishnu", title: "Lord Vishnu" },
+  { slug: "maa-durga", title: "Maa Durga" },
+  { slug: "maa-saraswati", title: "Maa Saraswati" },
+  { slug: "parshuram", title: "Parshuram" },
+  { slug: "radha-krishna", title: "Radha Krishna" },
+  { slug: "radhey-krishna-2", title: "Radhey Krishna 2" },
+  { slug: "radhey-krishna-3", title: "Radhey Krishna 3" },
+  { slug: "radhey-krishna-4", title: "Radhey Krishna 4" },
+  { slug: "radhey-krishna-5", title: "Radhey Krishna 5" },
+  { slug: "radhey-krishna", title: "Radhey Krishna" },
+  { slug: "rath-yatra", title: "Rath Yatra" },
+  { slug: "sai-baba-of-shirdi", title: "Sai Baba Of Shirdi" },
+  { slug: "shiv-parvati", title: "Shiv Parvati" },
+  { slug: "shiva-3", title: "Shiva 3" },
+  { slug: "shiva-5", title: "Shiva 5" },
+  { slug: "shiva-6", title: "Shiva 6" },
+  { slug: "shree-ram", title: "Shree Ram" },
+  { slug: "siya-ram", title: "Siya Ram" },
+  { slug: "valmiki", title: "Valmiki" },
+  { slug: "wahe-guru", title: "Wahe Guru" },
+  { slug: "windmill-1", title: "Windmill 1" },
+  { slug: "windmill-2", title: "Windmill 2" },
+  // __PAINTINGS_END__
+];
+
+const jpg   = (p) => `images/${p.slug}.jpg`;
+const thumb = (p) => `images/${p.slug}-thumb.jpg`;
+const hires = (p) => `images/${p.slug}-hires.jpg`;
+
+/* ============================ LIGHTBOX ============================ */
+const lb        = document.getElementById('lightbox');
+const lbImg     = document.getElementById('lb-img');
+const lbCaption = document.getElementById('lb-caption');
+let   lbIndex   = 0;
+let   zoom      = 1;
+let   panX = 0, panY = 0;
+const ZOOM_MIN = 1, ZOOM_MAX = 3, ZOOM_STEP = 0.35;
+
+function applyTransform() {
+    lbImg.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    lbImg.style.cursor = zoom > 1 ? 'grab' : 'default';
+}
+
+function openLightbox(index) {
+    lbIndex = (index + PAINTINGS.length) % PAINTINGS.length;
+    const p = PAINTINGS[lbIndex];
+    resetZoom();
+    lbImg.src = jpg(p);
+    lbImg.alt = p.title;
+    lbCaption.textContent = p.title;
+    lb.hidden = false;
+    document.body.style.overflow = 'hidden';
+    // Preload hi-res in the background; swapped in on first zoom.
+    const pre = new Image();
+    pre.src = hires(p);
+    lbImg._hires = hires(p);
+    lbImg._hiresLoaded = false;
+    pre.onload = () => { lbImg._hiresLoaded = true; };
+}
+
+function closeLightbox() {
+    lb.hidden = true;
+    document.body.style.overflow = '';
+    resetZoom();
+}
+
+function lbStep(dir) { openLightbox(lbIndex + dir); }
+
+function resetZoom() {
+    zoom = 1; panX = 0; panY = 0;
+    applyTransform();
+}
+
+function setZoom(next) {
+    zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    if (zoom === 1) { panX = 0; panY = 0; }
+    else if (lbImg._hiresLoaded && lbImg.src !== lbImg._hires) {
+        lbImg.src = lbImg._hires;   // swap to hi-res on first zoom
+    }
+    applyTransform();
+}
+
+document.getElementById('lb-close').onclick    = closeLightbox;
+document.getElementById('lb-prev').onclick     = () => lbStep(-1);
+document.getElementById('lb-next').onclick     = () => lbStep(1);
+document.getElementById('lb-zoom-in').onclick  = () => setZoom(zoom + ZOOM_STEP);
+document.getElementById('lb-zoom-out').onclick = () => setZoom(zoom - ZOOM_STEP);
+document.getElementById('lb-zoom-reset').onclick = resetZoom;
+
+lb.addEventListener('click', (e) => { if (e.target === lb) closeLightbox(); });
+
+lbImg.addEventListener('dblclick', () => setZoom(zoom > 1 ? 1 : 2));
+lbImg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    setZoom(zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+}, { passive: false });
+
+/* click-and-drag to pan when zoomed */
+let panning = false, panStartX = 0, panStartY = 0;
+lbImg.addEventListener('pointerdown', (e) => {
+    if (zoom <= 1) return;
+    panning = true;
+    panStartX = e.clientX - panX;
+    panStartY = e.clientY - panY;
+    lbImg.style.cursor = 'grabbing';
+    lbImg.setPointerCapture(e.pointerId);
+});
+lbImg.addEventListener('pointermove', (e) => {
+    if (!panning) return;
+    panX = e.clientX - panStartX;
+    panY = e.clientY - panStartY;
+    applyTransform();
+});
+lbImg.addEventListener('pointerup', () => { panning = false; applyTransform(); });
+
+document.addEventListener('keydown', (e) => {
+    if (lb.hidden) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === '+' || e.key === '=') setZoom(zoom + ZOOM_STEP);
+    else if (e.key === '-') setZoom(zoom - ZOOM_STEP);
+    else if (e.key === '0') resetZoom();
+    else if (zoom === 1 && e.key === 'ArrowLeft') lbStep(-1);
+    else if (zoom === 1 && e.key === 'ArrowRight') lbStep(1);
+});
+
+/* ============================ MOBILE GRID ============================ */
+let gridBuilt = false;
+function buildGrid() {
+    if (gridBuilt) return;
+    gridBuilt = true;
+    const grid = document.getElementById('grid');
+    PAINTINGS.forEach((p, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'tile';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', p.title);
+        const img = document.createElement('img');
+        img.src = jpg(p);
+        img.alt = p.title;
+        img.loading = 'lazy';
+        btn.appendChild(img);
+        btn.addEventListener('click', () => openLightbox(i));
+        grid.appendChild(btn);
+    });
+}
+
+/* ============================ DESKTOP RING ============================ */
+let ringBuilt = false;
+const ring = {
+    el: document.getElementById('ring'),
+    cards: [],
+    step: 0,
+    spin: 0,           // current rotation (deg)
+    snapTarget: null,  // deg to ease toward, or null
+    front: -1,
+    dragging: false,
+    autoDelay: 0,      // frames to wait before auto-rotate resumes
+};
+const AUTO_SPEED = 0.06;   // deg/frame gentle drift
+const CARD_W = 96, CARD_H = 128, RADIUS = 540;
+
+function buildRing() {
+    if (ringBuilt) return;
+    ringBuilt = true;
+    const N = PAINTINGS.length;
+    ring.step = 360 / N;
+    ring.el.style.setProperty('--cw', CARD_W + 'px');
+    ring.el.style.setProperty('--ch', CARD_H + 'px');
+    PAINTINGS.forEach((p, i) => {
+        const card = document.createElement('button');
+        card.className = 'ring-card';
+        card.type = 'button';
+        card.setAttribute('aria-label', p.title);
+        card.dataset.index = i;
+        card.style.transform = `rotateY(${i * ring.step}deg) translateZ(${RADIUS}px)`;
+        const img = document.createElement('img');
+        img.src = thumb(p);
+        img.alt = '';
+        card.appendChild(img);
+        card.addEventListener('click', () => {
+            if (Math.abs(dragMoved) > 6) return;   // ignore drag-clicks
+            if (i === ring.front) openLightbox(i);
+            else rotateToIndex(i);
+        });
+        ring.el.appendChild(card);
+        ring.cards.push(card);
+    });
+    setupRingDrag();
+    ringLoop();
+}
+
+function frontIndexFor(spin) {
+    const N = PAINTINGS.length;
+    // front is the card whose (i*step + spin) is closest to 0 (mod 360)
+    let idx = Math.round(-spin / ring.step) % N;
+    if (idx < 0) idx += N;
+    return idx;
+}
+
+function rotateToIndex(i) {
+    // shortest path to bring card i to front (spin such that i*step + spin ≡ 0)
+    const desired = -i * ring.step;
+    let delta = ((desired - ring.spin + 540) % 360) - 180;
+    ring.snapTarget = ring.spin + delta;
+    ring.autoDelay = 180;
+}
+
+function updateFront() {
+    const f = frontIndexFor(ring.spin);
+    if (f === ring.front) return;
+    ring.front = f;
+    ring.cards.forEach((c, i) => c.classList.toggle('is-front', i === f));
+    const p = PAINTINGS[f];
+    const heroImg = document.getElementById('ring-hero-img');
+    heroImg.src = jpg(p);
+    heroImg.alt = p.title;
+    document.getElementById('ring-hero-title').textContent = p.title;
+}
+
+function ringLoop() {
+    if (document.body.dataset.view !== 'spin') {
+        requestAnimationFrame(ringLoop);
+        return;
+    }
+    if (!ring.dragging) {
+        if (ring.snapTarget !== null) {
+            const d = ring.snapTarget - ring.spin;
+            if (Math.abs(d) < 0.05) { ring.spin = ring.snapTarget; ring.snapTarget = null; }
+            else ring.spin += d * 0.12;
+        } else if (ring.autoDelay > 0) {
+            ring.autoDelay--;
+        } else {
+            ring.spin -= AUTO_SPEED;
+        }
+    }
+    ring.el.style.setProperty('--spin', ring.spin.toFixed(3) + 'deg');
+    updateFront();
+    requestAnimationFrame(ringLoop);
+}
+
+let dragMoved = 0;
+function setupRingDrag() {
+    const stage = document.getElementById('ring-showcase');
+    let startX = 0, startSpin = 0, pid = null;
+    stage.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.ring-hero, .ring-nav')) return;
+        ring.dragging = true;
+        dragMoved = 0;
+        startX = e.clientX;
+        startSpin = ring.spin;
+        ring.snapTarget = null;
+        pid = e.pointerId;
+        stage.setPointerCapture(pid);
+        stage.style.cursor = 'grabbing';
+    });
+    stage.addEventListener('pointermove', (e) => {
+        if (!ring.dragging) return;
+        const dx = e.clientX - startX;
+        dragMoved = Math.max(dragMoved, Math.abs(dx));
+        ring.spin = startSpin + dx * 0.28;
+    });
+    const end = () => {
+        if (!ring.dragging) return;
+        ring.dragging = false;
+        stage.style.cursor = '';
+        // snap to nearest card, then pause before auto-rotate resumes
+        ring.snapTarget = Math.round(ring.spin / ring.step) * ring.step;
+        ring.autoDelay = 200;
+    };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+}
+
+document.getElementById('ring-prev').addEventListener('click', () => {
+    rotateToIndex((ring.front - 1 + PAINTINGS.length) % PAINTINGS.length);
+});
+document.getElementById('ring-next').addEventListener('click', () => {
+    rotateToIndex((ring.front + 1) % PAINTINGS.length);
+});
+document.getElementById('ring-hero-btn').addEventListener('click', () => {
+    if (ring.front >= 0) openLightbox(ring.front);
+});
+
+/* ============================ VIEW TOGGLE ============================ */
+const btnSpin = document.getElementById('view-spin');
+const btnGrid = document.getElementById('view-grid');
+
+function setView(view) {
+    if (view !== 'spin' && view !== 'grid') view = 'grid';
+    document.body.dataset.view = view;
+    btnSpin.setAttribute('aria-pressed', String(view === 'spin'));
+    btnGrid.setAttribute('aria-pressed', String(view === 'grid'));
+    try { localStorage.setItem('view', view); } catch (e) {}
+    if (view === 'spin') {
+        document.getElementById('ring-showcase').hidden = false;
+        buildRing();
+    } else {
+        buildGrid();
+    }
+}
+
+btnSpin.addEventListener('click', () => setView('spin'));
+btnGrid.addEventListener('click', () => setView('grid'));
+
+// Initial view: saved preference, else Spin on wide screens / Grid on phones.
+let initialView;
+try { initialView = localStorage.getItem('view'); } catch (e) {}
+if (!initialView) {
+    initialView = window.matchMedia('(min-width: 900px)').matches ? 'spin' : 'grid';
+}
+setView(initialView);
+
+/* Anti-copy deterrents (polite gates only) */
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('dragstart', (e) => e.preventDefault());
+</script>
+</body>
+</html>

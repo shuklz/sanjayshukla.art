@@ -1,6 +1,11 @@
 # Source masters — never leave the Mac
 originals/
-_src/
+
+# Unencrypted gallery source IS committed now (2026-07-15) so `git pull` syncs
+# it across Macs. Safe: all painting images are already public in images/, and
+# the live site's index.html stays Staticrypt-encrypted regardless.
+# Only ignore the transient temp that build.sh creates then deletes.
+_src/index.html
 
 # Local-only secrets
 .password

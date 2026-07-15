@@ -96,7 +96,7 @@ echo
 
 # --- step 3: stage, commit, push ---
 echo
-git add images/ index.html publish.sh
+git add images/ index.html publish.sh _src/gallery.html
 git add -u  # pick up any other tracked file the user edited (styles.css, etc.)
 
 # Use the index, not the working tree — untracked files (like a new originals/
