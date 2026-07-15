@@ -21,11 +21,11 @@ This is your reference for adding paintings, sharing the URL, changing the passw
 You use two machines with this project:
 
 - **Mac Studio** — the desktop you were just working on. It does **not** have an `originals/` folder, so you don't add paintings here. It's just a synced copy.
-- **Your art-editing Mac** (the one **with** the `originals/` folder — where you drop iPad PNGs and run `./publish.sh`).
+- **MacBook Pro (MBP)** — your art-editing Mac, the one **with** the `originals/` folder, where you drop iPad PNGs and run `./publish.sh`.
 
-They stay in sync through GitHub. Normally: run `./publish.sh` on the art Mac, then on the other Mac just `git pull` to catch up. **Whichever Mac you sit down at, `git pull` first** so you start from the latest.
+They stay in sync through GitHub. Normally: run `./publish.sh` on the MBP, then on the Mac Studio just `git pull` to catch up. **Whichever Mac you sit down at, `git pull` first** so you start from the latest.
 
-### ⚠️ ONE-TIME step on your art-editing Mac (do this next time you're on it)
+### ⚠️ ONE-TIME step on your MacBook Pro (do this next time you're on it)
 
 The gallery was upgraded on **2026-07-15** (the new spinning "ring" view). During that upgrade, the way the gallery source file is shared between Macs changed. Because of that, the **first** `git pull` on your art-editing Mac will fail with a message about an *"untracked working tree file `_src/gallery.html` would be overwritten."* That's expected. Fix it once, and it never happens again:
 
